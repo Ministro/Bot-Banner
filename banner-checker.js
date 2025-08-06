@@ -1,11 +1,13 @@
-const fs = require('fs');
-const fetch = require('node-fetch');
-const { Telegraf } = require('telegraf');
+const fs = require("fs");
+const https = require("https");
+const path = require("path");
 
-const BOT_TOKEN = process.env.BOT_TOKEN;
-const CHAT_ID = process.env.CHAT_ID;
+const axios = require("axios");
 
-const bot = new Telegraf(BOT_TOKEN);
+const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+
+const OB50_PATH = "./OB50.json"; // Você pode mudar esse caminho se necessário
 
 const staticPrefixes = [
   "FW", "LW", "TW", "TT", "Token", "Tower", "Wheel", "Faded", "TU",
@@ -13,73 +15,92 @@ const staticPrefixes = [
   "WV", "WonderVault", "Wonder", "Vault"
 ];
 
-function normalize(text) {
-  return text
+const normalize = (str) => {
+  return str
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\w\s]/gi, '')
-    .replace(/\s+/g, '_')
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w\s]/gi, "")
+    .replace(/\s+/g, "_")
     .trim();
-}
+};
 
-async function sendToTelegram(url) {
+const fetchJson = () => {
+  const raw = fs.readFileSync(OB50_PATH, "utf-8");
+  const data = JSON.parse(raw);
+  return data
+    .filter(item => item.Type === "BUNDLE" && item.Id >= 710047001)
+    .map(item => item.name)
+    .filter(name => typeof name === "string" && name.trim() !== "")
+    .map(normalize);
+};
+
+const generateCombos = (name) => {
+  const parts = name.split("_");
+  const base = parts[0]; // usar apenas a primeira parte
+  const combos = new Set();
+
+  combos.add(base);
+  combos.add(`${base}_Bundle`);
+
+  staticPrefixes.forEach(prefix => {
+    combos.add(`${prefix}_${base}`);
+    combos.add(`${prefix}_${base}_Bundle`);
+    combos.add(`${base}_${prefix}`);
+    combos.add(`${base}_${prefix}_Bundle`);
+  });
+
+  return Array.from(combos);
+};
+
+const validateImage = async (url) => {
   try {
-    const res = await fetch(url);
-    const buffer = await res.buffer();
-    await bot.telegram.sendPhoto(CHAT_ID, { source: buffer }, { caption: url });
-    console.log(`✅ Enviado: ${url}`);
-  } catch (err) {
-    console.error(`❌ Falha ao enviar ${url}:`, err.message);
+    const res = await axios.head(url);
+    return res.status === 200;
+  } catch {
+    return false;
   }
-}
+};
 
-(async () => {
+const sendToTelegram = async (imgUrl) => {
   try {
-    const raw = fs.readFileSync('./OB50.json', 'utf-8');
-    const json = JSON.parse(raw);
+    await axios.post(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendPhoto`, {
+      chat_id: TELEGRAM_CHAT_ID,
+      photo: imgUrl,
+      caption: `✅ Encontrado: ${imgUrl}`
+    });
+  } catch (err) {
+    console.error("Erro ao enviar para o Telegram:", err.message);
+  }
+};
 
-    const names = json
-      .filter(item => item.Type === "BUNDLE" && item.Id >= 710047000)
-      .map(item => normalize(item.name));
+const main = async () => {
+  const names = fetchJson();
+  let validCount = 0;
+  let invalidCount = 0;
+  const found = [];
 
-    let count = 0;
+  for (const name of names) {
+    const combos = generateCombos(name);
 
-    for (const name of names) {
-      const parts = name.split('_');
-      const first = parts[0];
+    for (const combo of combos) {
+      const url = `https://dl.dir.freefiremobile.com/common/OB50/BR/${combo}_1750x1070_BR_pt.png`;
+      const ok = await validateImage(url);
 
-      const combos = new Set();
-
-      combos.add(first);
-      combos.add(`${first}_Bundle`);
-
-      staticPrefixes.forEach(prefix => {
-        combos.add(`${prefix}_${first}`);
-        combos.add(`${prefix}_${name}`);
-        combos.add(`${prefix}_${name}_Bundle`);
-        combos.add(`${first}_${prefix}`);
-        combos.add(`${name}_${prefix}`);
-        combos.add(`${name}_${prefix}_Bundle`);
-      });
-
-      for (const combo of combos) {
-        const url = `https://dl.dir.freefiremobile.com/common/OB50/BR/${combo}_1750x1070_BR_pt.png`;
-
-        try {
-          const res = await fetch(url);
-          if (res.ok) {
-            await sendToTelegram(url);
-          } else {
-            console.log(`❌ [${++count}] ${combo}`);
-          }
-        } catch (err) {
-          console.log(`⚠️ Erro: ${combo}`, err.message);
-        }
-
-        await new Promise(r => setTimeout(r, 200)); // ~5 por segundo
+      if (ok) {
+        console.log(`✅ [${validCount + 1}] ${combo}`);
+        validCount++;
+        found.push(url);
+        await sendToTelegram(url);
+      } else {
+        console.log(`❌ [${invalidCount + 1}] ${combo}`);
+        invalidCount++;
       }
     }
-  } catch (err) {
-    console.error("Erro geral:", err.message);
   }
-})();
+
+  fs.writeFileSync("valid_banners.txt", found.join("\n"), "utf-8");
+};
+
+main().catch(err => {
+  console.error("Erro geral:", err);
+});
