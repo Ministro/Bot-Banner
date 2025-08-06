@@ -6,7 +6,6 @@
     "start": "node banner-checker.js"
   },
   "dependencies": {
-    "node-fetch": "^2.6.7",
-    "telegraf": "^4.12.2"
+    "axios": "^1.6.8"
   }
 }
