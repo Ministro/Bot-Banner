@@ -1,0 +1,12 @@
+{
+  "name": "banner-checker",
+  "version": "1.0.0",
+  "main": "banner-checker.js",
+  "scripts": {
+    "start": "node banner-checker.js"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.7",
+    "telegraf": "^4.12.2"
+  }
+}
