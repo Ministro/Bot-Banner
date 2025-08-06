@@ -2,8 +2,8 @@ const fs = require('fs');
 const fetch = require('node-fetch');
 const { Telegraf } = require('telegraf');
 
-const BOT_TOKEN = '7496271293:AAEnc7H3_GeGAY3NhTmUehLuAn-SEISc8B0';
-const CHAT_ID = '-1002558895285';
+const BOT_TOKEN = process.env.BOT_TOKEN;
+const CHAT_ID = process.env.CHAT_ID;
 
 const bot = new Telegraf(BOT_TOKEN);
 
@@ -50,11 +50,9 @@ async function sendToTelegram(url) {
 
       const combos = new Set();
 
-      // Apenas o primeiro nome
       combos.add(first);
       combos.add(`${first}_Bundle`);
 
-      // Com prefixos
       staticPrefixes.forEach(prefix => {
         combos.add(`${prefix}_${first}`);
         combos.add(`${prefix}_${name}`);
@@ -78,7 +76,7 @@ async function sendToTelegram(url) {
           console.log(`⚠️ Erro: ${combo}`, err.message);
         }
 
-        await new Promise(r => setTimeout(r, 200)); // 5 por segundo (300/min)
+        await new Promise(r => setTimeout(r, 200)); // ~5 por segundo
       }
     }
   } catch (err) {
