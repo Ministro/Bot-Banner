@@ -12,7 +12,10 @@ const OB50_PATH = "./OB50.json"; // Você pode mudar esse caminho se necessário
 const staticPrefixes = [
   "FW", "LW", "TW", "TT", "Token", "Tower", "Wheel", "Faded", "TU",
   "TopUp", "Topup", "TokenWheel", "FadedWheel", "TokenTower",
-  "WV", "WonderVault", "Wonder", "Vault"
+  "WV", "WonderVault", "Wonder", "Vault", "Group", "Naruto_W2", "EVO", "Evo", "Legend", "Legendary", "Scythe", 
+  "Pan", "Bat", "Backpack", "Back", "Pack", "Gloo", "Wall", "GlooWall", "Skill", 
+  "BackPack", "Loot", "Box", "LootBox", "Emote", "FinalShot", "Grenade", "Skywing", "Skydive", "AA", 
+  "Arrival", "Animation"
 ];
 
 const normalize = (str) => {
