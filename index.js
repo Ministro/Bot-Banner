@@ -43,8 +43,9 @@ async function run() {
         for (const p4 of lettersUpper) {
           for (const p5 of lettersUpper) {
             count++;
+
             if (count % 10000 === 0) {
-              console.log(`Testadas ${count} combinações até agora...`);
+              await sendTelegramMessage(`⚙️ ${count} combinações testadas até agora...`);
             }
 
             const code = `${p1}${p2}${p3}${p4}${p5}`;
