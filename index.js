@@ -14,7 +14,10 @@ const lettersUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const OB_VERSION = "OB50";
 const BASE_NAME = "TWMadaraTitleUs";
 
+const CONCURRENCY_LIMIT = 20; // quantas requisições simultâneas
+
 let count = 0;
+let found = false;
 
 async function testImage(url) {
   try {
@@ -34,39 +37,87 @@ async function sendTelegramMessage(msg) {
   }
 }
 
-async function run() {
-  await sendTelegramMessage("🔍 Iniciando buscas de imagens no Free Fire...");
-
+// Função para gerar todas as combinações
+function* generateCodes() {
   for (const p1 of lettersAny) {
     for (const p2 of digits) {
       for (const p3 of hVariants) {
         for (const p4 of lettersUpper) {
           for (const p5 of lettersUpper) {
-            count++;
-            const code = `${p1}${p2}${p3}${p4}${p5}`;
-            const url = `https://dl.aw.freefiremobile.com/common/${OB_VERSION}/BR/gacha/${code}${BASE_NAME}_pt_br.png`;
-
-            console.log(`Testando combinação #${count}: ${code}`);
-
-            if (count % 10000 === 0) {
-              await sendTelegramMessage(`⚙️ ${count} combinações testadas até agora...`);
-            }
-
-            const exists = await testImage(url);
-            if (exists) {
-              const message = `✅ Imagem encontrada!\n${url}`;
-              await sendTelegramMessage(message);
-              console.log("Parando execução após achar imagem.");
-              return;
-            }
+            yield `${p1}${p2}${p3}${p4}${p5}`;
           }
         }
       }
     }
   }
+}
 
-  await sendTelegramMessage("🔎 Busca finalizada, nenhuma imagem encontrada.");
-  console.log("Busca finalizada, nenhuma imagem encontrada.");
+async function run() {
+  await sendTelegramMessage("🔍 Iniciando buscas de imagens no Free Fire...");
+
+  const codesGenerator = generateCodes();
+  const promises = [];
+  let running = 0;
+
+  return new Promise((resolve) => {
+    function next() {
+      if (found) return resolve();
+
+      const nextCodeObj = codesGenerator.next();
+
+      if (nextCodeObj.done) {
+        // Quando acabar códigos, aguarda todas as promessas finalizarem
+        Promise.all(promises).then(() => {
+          if (!found) {
+            sendTelegramMessage("🔎 Busca finalizada, nenhuma imagem encontrada.");
+            console.log("Busca finalizada, nenhuma imagem encontrada.");
+          }
+          resolve();
+        });
+        return;
+      }
+
+      const code = nextCodeObj.value;
+      count++;
+
+      const url = `https://dl.aw.freefiremobile.com/common/${OB_VERSION}/BR/gacha/${code}${BASE_NAME}_pt_br.png`;
+
+      // Loga cada combinação no console
+      console.log(`Testando combinação #${count}: ${code}`);
+
+      // Envia mensagem a cada 10.000 combinações
+      if (count % 10000 === 0) {
+        sendTelegramMessage(`⚙️ ${count} combinações testadas até agora...`);
+      }
+
+      running++;
+      const p = testImage(url).then((exists) => {
+        running--;
+
+        if (exists && !found) {
+          found = true;
+          const message = `✅ Imagem encontrada!\n${url}`;
+          sendTelegramMessage(message);
+          console.log("Parando execução após achar imagem.");
+          resolve();
+        } else {
+          if (!found) next(); // Chama próxima requisição se não achou
+        }
+      });
+
+      promises.push(p);
+
+      // Controla o número de requisições paralelas
+      if (running < CONCURRENCY_LIMIT) {
+        next();
+      }
+    }
+
+    // Inicia as primeiras requisições paralelas até o limite
+    for (let i = 0; i < CONCURRENCY_LIMIT; i++) {
+      next();
+    }
+  });
 }
 
 run();
