@@ -12,7 +12,7 @@ const hVariants = ["h", "H"];
 const lettersUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 const OB_VERSION = "OB50";
-const BASE_NAME = "TWPain";
+const BASE_NAME = "TWMadaraTitleUs";
 
 let count = 0;
 
@@ -43,13 +43,14 @@ async function run() {
         for (const p4 of lettersUpper) {
           for (const p5 of lettersUpper) {
             count++;
+            const code = `${p1}${p2}${p3}${p4}${p5}`;
+            const url = `https://dl.aw.freefiremobile.com/common/${OB_VERSION}/BR/gacha/${code}${BASE_NAME}_pt_br.png`;
+
+            console.log(`Testando combinação #${count}: ${code}`);
 
             if (count % 10000 === 0) {
               await sendTelegramMessage(`⚙️ ${count} combinações testadas até agora...`);
             }
-
-            const code = `${p1}${p2}${p3}${p4}${p5}`;
-            const url = `https://dl.aw.freefiremobile.com/common/${OB_VERSION}/BR/gacha/${code}${BASE_NAME}_pt_br.png`;
 
             const exists = await testImage(url);
             if (exists) {
@@ -63,6 +64,7 @@ async function run() {
       }
     }
   }
+
   await sendTelegramMessage("🔎 Busca finalizada, nenhuma imagem encontrada.");
   console.log("Busca finalizada, nenhuma imagem encontrada.");
 }
