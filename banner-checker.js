@@ -1,109 +1,69 @@
-const fs = require("fs");
-const https = require("https");
-const path = require("path");
+import fetch from "node-fetch";
+import TelegramBot from "node-telegram-bot-api";
 
-const axios = require("axios");
+const TELEGRAM_TOKEN = "7496271293:AAEnc7H3_GeGAY3NhTmUehLuAn-SEISc8B0";
+const TELEGRAM_CHAT_ID = "-1002558895285";
 
-const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const bot = new TelegramBot(TELEGRAM_TOKEN);
 
-const OB50_PATH = "./OB50.json"; // Você pode mudar esse caminho se necessário
+const lettersAny = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const digits = "123456789";
+const hVariants = ["h", "H"];
+const lettersUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-const staticPrefixes = [
-  "FW", "LW", "TW", "TT", "Token", "Tower", "Wheel", "Faded", "TU",
-  "TopUp", "Topup", "TokenWheel", "FadedWheel", "TokenTower",
-  "WV", "WonderVault", "Wonder", "Vault", "Group", "Naruto_W2", "EVO", "Evo", "Legend", "Legendary", "Scythe", 
-  "Pan", "Bat", "Backpack", "Back", "Pack", "Gloo", "Wall", "GlooWall", "Skill", 
-  "BackPack", "Loot", "Box", "LootBox", "Emote", "FinalShot", "Grenade", "Skywing", "Skydive", "AA", 
-  "Arrival", "Animation"
-];
+const OB_VERSION = "OB50";
+const BASE_NAME = "TWPain";
 
-const normalize = (str) => {
-  return str
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^\w\s]/gi, "")
-    .replace(/\s+/g, "_")
-    .trim();
-};
+let count = 0;
 
-const fetchJson = () => {
-  const raw = fs.readFileSync(OB50_PATH, "utf-8");
-  const data = JSON.parse(raw);
-  return data
-    .filter(item => item.Type === "BUNDLE" && item.Id >= 710047001)
-    .map(item => item.name)
-    .filter(name => typeof name === "string" && name.trim() !== "")
-    .map(normalize);
-};
-
-const generateCombos = (name) => {
-  const parts = name.split("_");
-  const base = parts[0]; // usar apenas a primeira parte
-  const combos = new Set();
-
-  combos.add(base);
-  combos.add(`${base}_Bundle`);
-
-  staticPrefixes.forEach(prefix => {
-    combos.add(`${prefix}_${base}`);
-    combos.add(`${prefix}_${base}_Bundle`);
-    combos.add(`${base}_${prefix}`);
-    combos.add(`${base}_${prefix}_Bundle`);
-  });
-
-  return Array.from(combos);
-};
-
-const validateImage = async (url) => {
+async function testImage(url) {
   try {
-    const res = await axios.head(url);
-    return res.status === 200;
+    const res = await fetch(url, { method: "HEAD" });
+    return res.ok;
   } catch {
     return false;
   }
-};
+}
 
-const sendToTelegram = async (imgUrl) => {
+async function sendTelegramMessage(msg) {
   try {
-    await axios.post(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendPhoto`, {
-      chat_id: TELEGRAM_CHAT_ID,
-      photo: imgUrl,
-      caption: `✅ Encontrado: ${imgUrl}`
-    });
+    await bot.sendMessage(TELEGRAM_CHAT_ID, msg);
+    console.log("Mensagem enviada:", msg);
   } catch (err) {
-    console.error("Erro ao enviar para o Telegram:", err.message);
+    console.error("Erro ao enviar mensagem Telegram:", err.message);
   }
-};
+}
 
-const main = async () => {
-  const names = fetchJson();
-  let validCount = 0;
-  let invalidCount = 0;
-  const found = [];
+async function run() {
+  await sendTelegramMessage("🔍 Iniciando buscas de imagens no Free Fire...");
 
-  for (const name of names) {
-    const combos = generateCombos(name);
+  for (const p1 of lettersAny) {
+    for (const p2 of digits) {
+      for (const p3 of hVariants) {
+        for (const p4 of lettersUpper) {
+          for (const p5 of lettersUpper) {
+            count++;
+            if (count % 10000 === 0) {
+              console.log(`Testadas ${count} combinações até agora...`);
+            }
 
-    for (const combo of combos) {
-      const url = `https://dl.dir.freefiremobile.com/common/OB50/BR/${combo}_1750x1070_BR_pt.png`;
-      const ok = await validateImage(url);
+            const code = `${p1}${p2}${p3}${p4}${p5}`;
+            const url = `https://dl.aw.freefiremobile.com/common/${OB_VERSION}/BR/gacha/${code}${BASE_NAME}_pt_br.png`;
 
-      if (ok) {
-        console.log(`✅ [${validCount + 1}] ${combo}`);
-        validCount++;
-        found.push(url);
-        await sendToTelegram(url);
-      } else {
-        console.log(`❌ [${invalidCount + 1}] ${combo}`);
-        invalidCount++;
+            const exists = await testImage(url);
+            if (exists) {
+              const message = `✅ Imagem encontrada!\n${url}`;
+              await sendTelegramMessage(message);
+              console.log("Parando execução após achar imagem.");
+              return;
+            }
+          }
+        }
       }
     }
   }
+  await sendTelegramMessage("🔎 Busca finalizada, nenhuma imagem encontrada.");
+  console.log("Busca finalizada, nenhuma imagem encontrada.");
+}
 
-  fs.writeFileSync("valid_banners.txt", found.join("\n"), "utf-8");
-};
-
-main().catch(err => {
-  console.error("Erro geral:", err);
-});
+run();
