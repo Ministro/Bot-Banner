@@ -1,11 +1,14 @@
 {
-  "name": "banner-checker",
+  "name": "ff-banner-bot",
   "version": "1.0.0",
-  "main": "banner-checker.js",
+  "description": "Bot que busca banners FF e avisa no Telegram",
+  "type": "module",
+  "main": "index.js",
   "scripts": {
-    "start": "node banner-checker.js"
+    "start": "node index.js"
   },
   "dependencies": {
-    "axios": "^1.6.8"
+    "node-fetch": "^3.3.1",
+    "node-telegram-bot-api": "^0.61.0"
   }
 }
