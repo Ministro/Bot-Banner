@@ -12,7 +12,7 @@ const hVariants = ["h", "H"];
 const lettersUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 const OB_VERSION = "OB50";
-const BASE_NAME = "TWMadaraTitleUs";
+const BASE_NAME = "TWObitoTitleUs";
 
 const CONCURRENCY_LIMIT = 20; // quantas requisições simultâneas
 
